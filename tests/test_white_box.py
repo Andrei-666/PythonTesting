@@ -61,7 +61,7 @@ def test_statement_coverage_basic_formula():
 
 #N11->N12 (true) is_fragile=True => base=base*1.5
 def test_statement_coverage_fragile():
-    assert ShippingCostCalculator.calculate_cost(10,2,True)==pytest.approx(39.0)
+    assert ShippingCostCalculator.calculate_cost(10,5,True)==pytest.approx(39.0)
 
 
 
