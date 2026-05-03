@@ -1,0 +1,22 @@
+Am folosit mutatest pe windows pentru a genera mutanti.
+
+La prima rulare s-au faut 36 de mutanti si rezultatul a fost:
+Overall mutation trial summary
+==============================
+ - DETECTED: 35
+ - SURVIVED: 1
+ - TOTAL RUNS: 36
+
+
+Un mutant a scapat deoarece nu aveam niciun test cu o distanta mica si o greutate mare
+
+Ca sa rezolv problema am creat inca un test:
+    def test_boundary_weight_bigger(self):
+        assert ShippingCostCalculator.calculate_cost([{'distance': 2, 'weight': 10, 'is_fragile': False}])==pytest.approx(28.0)
+
+
+Dupa ce am modificat codul, am rulat din nou si am avut urmatorul rezultat:
+Overall mutation trial summary
+==============================
+ - DETECTED: 39
+ - TOTAL RUNS: 39
