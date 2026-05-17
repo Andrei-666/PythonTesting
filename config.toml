@@ -1,0 +1,7 @@
+[cosmic-ray]
+module-path = "src/shipping_cost_calculator.py"
+timeout = 10.0
+test-command = "python -m pytest tests/"
+
+[cosmic-ray.distributor]
+name = "local"

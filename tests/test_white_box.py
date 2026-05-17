@@ -3,7 +3,7 @@ from src.shipping_cost_calculator import ShippingCostCalculator
 
 
 """
-Teste black box
+Teste white box
 
 Graf
 noduri
@@ -22,45 +22,68 @@ n11-if weight>200                        === D5
 n12- raise ValueError (greutate prea mare)
 n13- if distance<5 and weight<5         === D6
 n14- base_cost=15.0
-n15- base_cost=10.0+x+y
+n15-base_cost=10.0+distance+max(0,2.0*(weight-2))
 n16- if is_fragile                      === D7
-n17=base_count=base_count*1.5
+n17=base_cost=base_cost*fragile_multiplier
 n18- total_cost=total_cost+base_cost
-n19- return base_count
+n19- return total_cost
+Exit(20)
 
 branches:
 D1=True: N2->N3
 D1=False: N2->N4->N5
+
 D2=True(mai sunt pachete): N5->N6->N7
 D2=False(loop terminat): N5->N19
+
 D3=True: N7->N8
 D3=False: N7->N9
+
 D4=True: N9->N10
 D4=False: N9->N11
+
 D5=True: N11->N12
 D5=False: N11->N13
-D6=True: N13->N14->N18
-D6=False: N13->N15->N18
+
+D6=True: N13->N14->N16
+D6=False: N13->N15->N16
+
 D7=True: N16->N17->N18
 D7=False: N16->N18
 
 
 conditions:
-D3: distance<=0 or weight<=0
-    c1a distance<=0
-    c1b weight<=0
+D1:
+    c1=len(packages)==0
 
-D6: distance<5 and weight<5
-    C4a distance<5
-    C4b weight<5
+D2:
+    c2=mai exista pachete de procesat    
 
-D7: is_fragile=True
-    C5a is_fragile=True
+D3:
+    c3a=distance<=0
+    c3b=weight<=0
 
-Circuite
-n=19 noduri
-e=22 muchii
-e-n+2=5 circuite independente
+D4:
+    c4=distance>1000
+
+D5:
+    c5=weight>200
+
+D6:
+    c6a=distance<5
+    c6b=weight<5
+
+D7:
+    c7=is_fragile
+
+    
+
+Circuite:
+
+Pentru graful de flux de control:
+n=20 noduri
+e=26 muchii
+e-n+2=26-20+2=8 circuite independente
 
     
 
@@ -73,41 +96,58 @@ def pkg(distance, weight, is_fragile):
 
 """    Statement coverage    ---------------------------------------------------------------------------
 
+pentru acoperire la nivel de instructiune, alegem date de test astfel incat fiecare nod relevant din graf sa fie parcurs cel putin o data
 
+Intrari                         Rezultat(expected)       Instructiuni parcurse
+
+[]                              ValueError               N1,N2,N3,Exit
+
+[(0,5,F)]                       ValueError               N1,N2,N4,N5,N6,N7,N8,Exit
+
+[(1001,5,F)]                    ValueError               N1,N2,N4,N5,N6,N7,N9,N10,Exit
+
+[(10,201,F)]                    ValueError               N1,N2,N4,N5,N6,N7,N9,N11,N12,Exit
+
+[(2,2,F)]                       15.0                     N1,N2,N4,N5,N6,N7,N9,N11,N13,N14,N16,N18,N5,N19,Exit
+
+[(10,5,F)]                      26.0                     N1,N2,N4,N5,N6,N7,N9,N11,N13,N15,N16,N18,N5,N19,Exit
+
+[(10,5,T)]                      39.0                     N1,N2,N4,N5,N6,N7,N9,N11,N13,N15,N16,N17,N18,N5,N19,Exit
 
 
  """
 class TestStatementCoverage:
+    #s_1: ([]), N1,N2,N3,Exit
     def test_statement_empty_list(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost([])
 
-    #N2->N3 (true) 0<=0 sau 5<=0
+    #s_2: ([(0,5,F)]), N7->N8
     def test_statement_coverage_invalid_input(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(0,5,False))
 
-    #N4->N5(true) 1001>1000
+    #s_3: ([(1001,5,F)]), N9->N10
     def test_statement_coverage_distance_over_limit(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(1001,5,False))
 
-    #N6->N7(true) 201>200
+    #s_4: ([(10,201,F)]), N11->N12
     def test_statement_coverage_weight_over_limit(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(10,201,False))
 
-    #N8->N9 (true) 2<5 and 2<5 => base=15
+     #s_5: ([(2,2,F)]), N13->N14
     def test_statement_coverage_fixed_cost(self):
         assert ShippingCostCalculator.calculate_cost(pkg(2,2,False))==pytest.approx(15.0)
 
-    #N8->N10 10>=5 and 2<5 => cost=10+10+6=26
+    #s_6: ([(10,5,F)]), N13->N15
     def test_statement_coverage_basic_formula(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-    #N11->N12 (true) is_fragile=True => base=base*1.5
+    #s_7: ([(10,5,T)]), N16->N17
     def test_statement_coverage_fragile(self):
-        assert ShippingCostCalculator.calculate_cost(pkg(10,5,True))==pytest.approx(39.0)
+         assert ShippingCostCalculator.calculate_cost(pkg(10,5,True))==pytest.approx(39.0)
 
 
 
@@ -115,65 +155,92 @@ class TestStatementCoverage:
 
 class TestDecisionCoverage:
     """-------------------------------------------------------------------------------------------------------
-    D1: distance<=0 or weight<=0  
-    D2: distance > 1000 
-    D3: weight > 200 
-    D4: distance<5 and weight<5 
-    D5: is_fragile = True
 
+    pentru acoperire la nivel de decizie, fiecare decizie trebuie sa ia atat valoarea true, cat si valoarea false
+
+Decizii
+    D1: if len(packages)==0
+    D2: for pkg in packages
+    D3: distance<=0 or weight<=0  
+    D4: distance > 1000 
+    D5: weight > 200 
+    D6: distance<5 and weight<5 
+    D7: is_fragile = True
+
+    Intrari                         Rezultat(expected)       Decizii acoperite
+
+    []                              ValueError               D1=True
+    [(10,5,F)]                      26.0                     D1=False
+    [(10,5,F)]                      26.0                     D2=True, D2=False
+    [(-1,5,F)]                      ValueError               D3=True
+    [(10,5,F)]                      26.0                     D3=False
+    [(1001,5,F)]                    ValueError               D4=True
+    [(10,5,F)]                      26.0                     D4=False
+    [(10,201,F)]                    ValueError               D5=True
+    [(10,5,F)]                      26.0                     D5=False
+    [(2,2,F)]                       15.0                     D6=True
+    [(5,3,F)]                       17.0                     D6=False
+    [(10,5,T)]                      39.0                     D7=True
+    [(10,5,F)]                      26.0                     D7=False
+    
 
     """
 
-
+    #d_1: ([]), D1=True
     def test_decision_d1_true_empty(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost([])
 
-    
-    def test_decision_coverage_d1_false(self):
+    #d_2: ([(10,5,F)]), D1=False
+    def test_decision_d1_false_non_empty(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-    #D3 true: distance <=0 sau weight<=0
-    def test_decision_coverage_d3_true_invalid_negative(self):
+    #d_3: ([(10,5,F)]), D2=True si D2=False
+    #bucla for intra pentru pachetul existent, apoi iese dupa procesarea lui
+    def test_decision_d2_true_and_false_loop(self):
+        assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
+
+    #d_4: ([(-1,5,F)]), D3=True
+    def test_decision_d3_true_invalid_negative(self):
         with pytest.raises(ValueError):
-            ShippingCostCalculator.calculate_cost(pkg(-1, 5, False))
-    #D3 false: distance>0 siweight>0    
-    def test_decision_coverage_d3_false(self):
+            ShippingCostCalculator.calculate_cost(pkg(-1,5,False))
+
+    #d_5: ([(10,5,F)]), D3=False
+    def test_decision_d3_false_valid_values(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-
-    #D4 true: distance>1000
-    def test_decision_coverage_d4_true(self):
+    #d_6: ([(1001,5,F)]), D4=True
+    def test_decision_d4_true_distance_over_limit(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(1001,5,False))
-    #D4 false: distance<=1000
-    def test_decision_coverage_d4_false(self):
+
+    #d_7: ([(10,5,F)]), D4=False
+    def test_decision_d4_false_distance_valid(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-
-
-    #D5 true: weight>200
-    def test_decision_coverage_d3_true(self):
+    #d_8: ([(10,201,F)]), D5=True
+    def test_decision_d5_true_weight_over_limit(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(10,201,False))
-    #D5 false: weight<=200
-    def test_decision_coverage_d3_false(self):
+
+    #d_9: ([(10,5,F)]), D5=False
+    def test_decision_d5_false_weight_valid(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-    #D6 true: distance<5 si weight<5
-    def test_decision_coverage_d4_true(self):
+    #d_10: ([(2,2,F)]), D6=True
+    def test_decision_d6_true_fixed_cost(self):
         assert ShippingCostCalculator.calculate_cost(pkg(2,2,False))==pytest.approx(15.0)
 
-    #D6 false distance>=5 sau weight>=5
-    def test_decision_coverage_d4_false(self):
+    #d_11: ([(5,3,F)]), D6=False
+    def test_decision_d6_false_formula_cost(self):
         assert ShippingCostCalculator.calculate_cost(pkg(5,3,False))==pytest.approx(17.0)
 
-    #D7 true: is_fragile=True
-    def test_decision_coverage_d5_true(self):
+    #d_12: ([(10,5,T)]), D7=True
+    def test_decision_d7_true_fragile(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,True))==pytest.approx(39.0)
 
-    #D7 false: is_fragile=False
-    def test_decision_coverage_d5_false(self):
+    #d_13: ([(10,5,F)]), D7=False
+    def test_decision_d7_false_non_fragile(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
 
@@ -183,57 +250,74 @@ class TestDecisionCoverage:
 
 class TestConditionCoverage:
     """------------------------------------------------------------------------------------------------
-    conditions:
-    D1: distance<=0 or weight<=0
-        c1a distance<=0
-        c1b weight<=0
+D3: distance<=0 or weight<=0
+    c3a: distance<=0
+    c3b: weight<=0
 
-    D4: distance<5 and weight<5
-        C4a distance<5
-        C4b weight<5
+D6: distance<5 and weight<5
+    c6a: distance<5
+    c6b: weight<5
 
-    D5: is_fragile = True
-        C5a is_fragile=True
+D7: is_fragile
+    c7: is_fragile
+
+    Intrari                         Rezultat(expected)       Conditii individuale acoperite
+
+    [(0,5,F)]                       ValueError               c3a=True
+    [(10,5,F)]                      26.0                     c3a=False
+    [(10,0,F)]                      ValueError               c3b=True
+    [(10,5,F)]                      26.0                     c3b=False
+    [(2,2,F)]                       15.0                     c6a=True
+    [(10,2,F)]                      20.0                     c6a=False
+    [(2,2,F)]                       15.0                     c6b=True
+    [(1,5,F)]                       17.0                     c6b=False
+    [(10,5,T)]                      39.0                     c7=True
+    [(10,5,F)]                      26.0                     c7=False
+
+
 
 
     """
-    #c1a distance<=0
-    def test_condition_coverage_c1a_true(self):
+    #cc_1: ([(0,5,F)]), c3a=True
+    def test_condition_c3a_true(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(0,5,False))
 
-    def test_condition_coverage_c1a_false(self):
-        assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)   
+    #cc_2: ([(10,5,F)]), c3a=False
+    def test_condition_c3a_false(self):
+        assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-
-    #c1b weight<=0
-    def test_condition_coverage_c1b_true(self):
+    #cc_3: ([(10,0,F)]), c3b=True
+    def test_condition_c3b_true(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(10,0,False))
 
-    def test_condition_coverage_c1b_false(self):
+    #cc_4: ([(10,5,F)]), c3b=False
+    def test_condition_c3b_false(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
-    #c4a distance<5
-    def test_condition_coverage_c4a_true(self):
+    #cc_5: ([(2,2,F)]), c6a=True
+    def test_condition_c6a_true(self):
         assert ShippingCostCalculator.calculate_cost(pkg(2,2,False))==pytest.approx(15.0)
 
-    def test_condition_coverage_c4a_false(self):
+    #cc_6: ([(10,2,F)]), c6a=False
+    def test_condition_c6a_false(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,2,False))==pytest.approx(20.0)
 
-
-    #c4b weight<5
-    def test_condition_coverage_c4b_true(self):
+    #cc_7: ([(2,2,F)]), c6b=True
+    def test_condition_c6b_true(self):
         assert ShippingCostCalculator.calculate_cost(pkg(2,2,False))==pytest.approx(15.0)
 
-    def test_condition_coverage_c4b_false(self):
+    #cc_8: ([(1,5,F)]), c6b=False
+    def test_condition_c6b_false(self):
         assert ShippingCostCalculator.calculate_cost(pkg(1,5,False))==pytest.approx(17.0)
 
-    #c5a is_fragile=True
-    def test_condition_coverage_c5a_true(self):
+    #cc_9: ([(10,5,T)]), c7=True
+    def test_condition_c7_true(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,True))==pytest.approx(39.0)
 
-    def test_condition_coverage_c5a_false(self):
+    #cc_10: ([(10,5,F)]), c7=False
+    def test_condition_c7_false(self):
         assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
 
 
@@ -241,47 +325,83 @@ class TestConditionCoverage:
 
 class TestIndependentPaths:
     """circuite independente ------------------------------------------------------------------------------
-    5 circuite independente
-    
-    C1:N1->N2(True)->N3 (lista goala)
-    
-    C2: N1->N2(False)->N4->N5(False)->N19 (lista nevida dar loop ul nu ruleaza)
+-pentru graful actual:
+    n=20
+    e=26
 
-    C3: N1->N2(False)->N4->N5(True)->N6->N7(True)->N8 (date invalide)
+    V(G)=26-20+2=8
 
-    C4: N1->N2(False)->N4->N5(True)->N6->N7(False)->N9(False)->N11(False)->N13(True)->N14->N16(False)->N18->N5(False)->N19 (fragil, formula, un pachet)
+Rezulta 8 circuite independente
+
+    C1: N1,N2,N3,Exit,N1
+        lista goala
+
+    C2: N1,N2,N4,N5,N6,N7,N8,Exit,N1 - pachet invalid prin distance<=0 sau weight<=0
+
+    C3: N1,N2,N4,N5,N6,N7,N9,N10,Exit,N1 - distanta mai mare de 1000
+
+    C4: N1,N2,N4,N5,N6,N7,N9,N11,N12,Exit,N1 - greutate mai mare de 200
+
+    C5: N1,N2,N4,N5,N6,N7,N9,N11,N13,N14,N16,N18,N5,N19,Exit,N1 - cost fix, nefragil, un singur pachet
+
+    C6: N1,N2,N4,N5,N6,N7,N9,N11,N13,N15,N16,N18,N5,N19,Exit,N1 - formula standard, nefragil, un singur pachet
+
+    C7: N1,N2,N4,N5,N6,N7,N9,N11,N13,N15,N16,N17,N18,N5,N19,Exit,N1 - formula standard, fragil, un singur pachet
+
+    C8: N5,N6,N7,N9,N11,N13,N14,N16,N18,N5 - circuitul buclei for, parcurs prin procesarea a cel putin doua pachete
+
     
-    C5:N1->N2(False)->N4->N5(True)->N6->N7(False)->N9(False)->N11(False)->N13(False)->N15->N16(True)->N17->N18->N5(True)->...........->N5(false)->N19 (fragil, formula, pachete multiple)
+    C1: []
+    C2: [(0,5,F)]
+    C3: [(1001,5,F)]
+    C4: [(10,201,F)]
+    C5: [(2,2,F)]
+    C6: [(10,5,F)]
+    C7: [(10,5,T)]
+    C8: [(2,2,F),(10,5,T)]
+
+
     """
 
+    #C1: N1,N2,N3,Exit,N1
     def test_circuit_1_empty_list(self):
-        #C1: N1->N2(T)->N3
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost([])
- 
-    def test_circuit_2_invalid_package(self):
-        #C3: N5(T)->N6->N7(T)->N8
-        #pachet cu distance negativa=>raise in prima iteratie
+
+    #C2: N1,N2,N4,N5,N6,N7,N8,Exit,N1
+    def test_circuit_2_invalid_distance_or_weight(self):
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(0,5,False))
- 
+
+    #C3: N1,N2,N4,N5,N6,N7,N9,N10,Exit,N1
     def test_circuit_3_distance_over_limit(self):
-        #N9(T)->N10: distance>1000=>raise
         with pytest.raises(ValueError):
             ShippingCostCalculator.calculate_cost(pkg(1001,5,False))
- 
-    def test_circuit_4_flat_rate_non_fragile(self):
-        #C4:toate validarile trec, cost fix, nefragil, un pachet
+
+    #C4: N1,N2,N4,N5,N6,N7,N9,N11,N12,Exit,N1
+    def test_circuit_4_weight_over_limit(self):
+        with pytest.raises(ValueError):
+            ShippingCostCalculator.calculate_cost(pkg(10,201,False))
+
+    #C5: cost fix, nefragil
+    def test_circuit_5_fixed_cost_non_fragile(self):
         assert ShippingCostCalculator.calculate_cost(pkg(2,2,False))==pytest.approx(15.0)
- 
-    def test_circuit_5_formula_fragile_multiple(self):
-        #C5: formula, fragil, loop de 2 ori
-        #pachet1:15.0, pachet2:39.0 =>total=54.0
+
+    #C6: formula standard, nefragil
+    def test_circuit_6_formula_non_fragile(self):
+        assert ShippingCostCalculator.calculate_cost(pkg(10,5,False))==pytest.approx(26.0)
+
+    #C7: formula standard, fragil
+    def test_circuit_7_formula_fragile(self):
+        assert ShippingCostCalculator.calculate_cost(pkg(10,5,True))==pytest.approx(39.0)
+
+    #C8: circuitul buclei for este parcurs prin doua pachete
+    def test_circuit_8_loop_multiple_packages(self):
         packages = [
-            {'distance': 2,  'weight': 2, 'is_fragile': False},
+            {'distance': 2, 'weight': 2, 'is_fragile': False},
             {'distance': 10, 'weight': 5, 'is_fragile': True},
         ]
-        assert ShippingCostCalculator.calculate_cost(packages) == pytest.approx(54.0)
+        assert ShippingCostCalculator.calculate_cost(packages)==pytest.approx(54.0)
 
 
 
